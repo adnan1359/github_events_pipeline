@@ -1,0 +1,33 @@
+# Secrets & credentials — NEVER commit these
+certs/*.pem
+certs/*.cert
+certs/*.key
+certs/*.jks
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+airflow/*.cfg
+airflow/*.pid
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

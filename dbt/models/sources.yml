@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: silver
+    schema: gh_silver          # the database produced by notebook 02
+    tables:
+      - name: events
+        description: "Cleaned, deduplicated GitHub events (one row per event_id)."
+        columns:
+          - name: event_id
+            tests: [unique, not_null]
+          - name: event_type
+            tests: [not_null]
