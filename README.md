@@ -144,7 +144,7 @@ PR activity trend, top developers leaderboard, event-type mix over time.
 
 ---
 
-## Best practices baked in
+## Best practices included
 
 - **Exactly-once / idempotency** — Spark checkpoints store Kafka offsets; Silver uses
   `MERGE` on `event_id`; the producer uses idempotent writes (`enable.idempotence`).
@@ -157,23 +157,3 @@ PR activity trend, top developers leaderboard, event-type mix over time.
 - **Secrets hygiene** — certs gitignored; Databricks secret scopes; no creds in code.
 - **Incremental everywhere** — Silver/Gold only process recent partitions, not full history.
 
----
-
-## 🌟 Why this project stands out to Hiring Managers
-
-Most data engineering portfolios consist of simple batch scripts moving CSVs into Postgres. This project demonstrates the **exact modern data stack and architectural patterns** used by top-tier tech companies.
-
-### Technical Depth Demonstrated
-- **Real-Time Streaming vs. Batch**: Ingesting millions of events via **managed Kafka** and processing them with **Spark Structured Streaming** proves you understand stateful streaming, checkpoints, and backpressure.
-- **Modern Cloud Data Warehousing**: Implementing the **Medallion Architecture** (Bronze/Silver/Gold) on **Delta Lake** showcases your grasp of schema enforcement, ACID transactions in the data lake, and `MERGE`-based deduplication.
-- **Production-Grade Orchestration**: Running **Dockerized Apache Airflow** to orchestrate distributed cloud jobs via the **Databricks REST API** shows you know how to decouple control-plane from data-plane.
-- **Analytics Engineering Best Practices**: Incorporating **dbt** for the Gold layer highlights an understanding of data testing, modular SQL, and CI/CD ready analytics.
-- **Cost Optimization & Security**: Utilizing **Databricks Serverless compute**, `Trigger.availableNow` for cost control, and **Databricks Secret Scopes** for secure credential management proves you are ready for enterprise environments.
-
-### Resume Impact Bullet Points
-If you are adding this to your resume, here are high-impact bullet points you can use:
-
-> - *Architected an end-to-end streaming data pipeline ingesting millions of public GitHub events from GH Archive into Aiven Kafka, processed via Spark Structured Streaming on Databricks.*
-> - *Designed and implemented a Delta Lake Medallion Architecture (Bronze, Silver, Gold), utilizing `MERGE` operations for exactly-once idempotent processing and schema enforcement.*
-> - *Modeled a robust star schema powering a Power BI dashboard, highlighting repository trends and developer activity.*
-> - *Orchestrated the distributed pipeline using Dockerized Apache Airflow and the Databricks Jobs API, ensuring fault tolerance and automated retries.*
