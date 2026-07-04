@@ -37,7 +37,7 @@ def main() -> int:
     admin = AdminClient(KAFKA_CONFIG)
     try:
         metadata = admin.list_topics(timeout=15)
-    except Exception as exc:  # noqa: BLE001 - surface any connection error
+    except Exception as exc:  
         print(f"\n[FAILED] Could not connect: {exc}")
         return 1
 

@@ -9,11 +9,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Project root = one level up from this producer/ folder
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CERTS_DIR = PROJECT_ROOT / "certs"
 
-# Load overrides from project-root .env (optional)
 load_dotenv(PROJECT_ROOT / ".env")
 
 
@@ -21,13 +19,11 @@ def _cert_path(env_var: str, default_name: str) -> str:
     """Resolve a cert path from env, or default to certs/<default_name>."""
     value = os.getenv(env_var)
     if value:
-        # Allow relative paths in .env, resolved against the project root
         p = Path(value)
         return str(p if p.is_absolute() else PROJECT_ROOT / p)
     return str(CERTS_DIR / default_name)
 
 
-# ── Aiven Kafka connection (client-certificate / SSL auth) ───────────────────
 KAFKA_BOOTSTRAP_SERVERS = os.getenv(
     "KAFKA_BOOTSTRAP_SERVERS",
     "kafka-3ca0846-adnananam1359-fbe9.f.aivencloud.com:12815",
@@ -43,12 +39,14 @@ KAFKA_CONFIG = {
     "ssl.ca.location": SSL_CA_LOCATION,
     "ssl.certificate.location": SSL_CERT_LOCATION,
     "ssl.key.location": SSL_KEY_LOCATION,
-    # Producer reliability settings (exactly-once-ish at the broker boundary)
-    "acks": "all",                 # wait for all in-sync replicas
-    "enable.idempotence": True,    # no duplicate writes on retry
+
+    "acks": "all",                 
+    "enable.idempotence": True,    
     "retries": 5,
-    "linger.ms": 50,               # small batching window for throughput
+    "linger.ms": 50,              
     "compression.type": "snappy",
+    "queue.buffering.max.messages": 200000, 
+    "queue.buffering.max.kbytes": 524288,
 }
 
 # ── Topics ───────────────────────────────────────────────────────────────────
@@ -63,7 +61,7 @@ TOPICS = {
 NUM_PARTITIONS = 2
 REPLICATION_FACTOR = 2
 
-# ── Data source ───────────────────────────────────────────────────────────────
+# ── Data source 
 GHARCHIVE_BASE_URL = "https://data.gharchive.org"
 
 

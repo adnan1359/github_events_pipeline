@@ -1,7 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key=['event_date', 'repo_id', 'event_type'],
-    incremental_strategy='merge',
+    incremental_strategy='insert_overwrite',
     partition_by=['event_date']
 ) }}
 
@@ -11,11 +10,17 @@ SELECT
     repo_name,
     event_type,
     COUNT(event_id)             AS event_count,
-    COUNT(DISTINCT actor_id)    AS unique_actors
+    COUNT(DISTINCT actor_id)    AS unique_actors,
+    MAX(ingested_at)            AS ingested_at
 FROM {{ ref('silver_events') }}
 
 {% if is_incremental() %}
-  WHERE event_date >= (SELECT COALESCE(MAX(event_date), DATE'1970-01-01') FROM {{ this }})
+  -- Re-aggregate only the dates affected by newly ingested data
+  WHERE event_date IN (
+      SELECT DISTINCT event_date
+      FROM {{ ref('silver_events') }}
+      WHERE ingested_at > (SELECT COALESCE(MAX(ingested_at), TIMESTAMP'1970-01-01 00:00:00') FROM {{ this }})
+  )
 {% endif %}
 
 GROUP BY event_date, repo_id, repo_name, event_type

@@ -13,10 +13,11 @@ SELECT
     is_public,
     event_timestamp,
     event_date,
-    event_hour
+    event_hour,
+    ingested_at
 FROM {{ ref('silver_events') }}
 
 {% if is_incremental() %}
   -- only pull rows newer than what we already loaded
-  WHERE event_date >= (SELECT COALESCE(MAX(event_date), DATE'1970-01-01') FROM {{ this }})
+  WHERE ingested_at > (SELECT COALESCE(MAX(ingested_at), TIMESTAMP'1970-01-01 00:00:00') FROM {{ this }})
 {% endif %}

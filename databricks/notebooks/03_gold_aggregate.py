@@ -1,9 +1,8 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # 03 · Gold — business-ready star schema + aggregates
-# MAGIC
-# MAGIC Silver → Gold. Builds dimension tables (`dim_repos`, `dim_users`), a fact table
-# MAGIC (`fact_events`), and pre-aggregated tables that Power BI reads directly.
+
+# Gold — business-ready star schema + aggregates
+
+# Silver → Gold. Builds dimension tables (`dim_repos`, `dim_users`), a fact table
+# (`fact_events`), and pre-aggregated tables that Power BI reads directly.
 
 # COMMAND ----------
 
@@ -29,11 +28,7 @@ def write_gold(df, name, partition_by=None):
     w.saveAsTable(f"{GOLD_DB}.{name}")
     print(f"wrote {GOLD_DB}.{name}")
 
-# COMMAND ----------
 
-# MAGIC %md ### Dimension: repos
-
-# COMMAND ----------
 
 dim_repos = (
     silver.where(F.col("repo_id").isNotNull())
@@ -46,11 +41,7 @@ dim_repos = (
 )
 write_gold(dim_repos, "dim_repos")
 
-# COMMAND ----------
 
-# MAGIC %md ### Dimension: users
-
-# COMMAND ----------
 
 dim_users = (
     silver.where(F.col("actor_id").isNotNull())
@@ -63,11 +54,6 @@ dim_users = (
 )
 write_gold(dim_users, "dim_users")
 
-# COMMAND ----------
-
-# MAGIC %md ### Fact: one row per event (slim, partitioned)
-
-# COMMAND ----------
 
 fact_events = silver.select(
     "event_id", "event_type", "actor_id", "repo_id",
@@ -75,11 +61,7 @@ fact_events = silver.select(
 )
 write_gold(fact_events, "fact_events", partition_by="event_date")
 
-# COMMAND ----------
 
-# MAGIC %md ### Aggregate: daily activity per repo / event type
-
-# COMMAND ----------
 
 agg_daily = (
     silver.groupBy("event_date", "repo_id", "repo_name", "event_type")
@@ -90,11 +72,8 @@ agg_daily = (
 )
 write_gold(agg_daily, "agg_daily_activity", partition_by="event_date")
 
-# COMMAND ----------
 
-# MAGIC %md ### Aggregate: top repos by stars (WatchEvent = a star)
 
-# COMMAND ----------
 
 top_repos = (
     silver.where(F.col("event_type") == "WatchEvent")
@@ -104,7 +83,6 @@ top_repos = (
 )
 write_gold(top_repos, "top_repos_by_stars")
 
-# COMMAND ----------
 
 print("Gold layer refreshed.")
 display(spark.sql(f"SELECT * FROM {GOLD_DB}.top_repos_by_stars LIMIT 20"))

@@ -1,22 +1,19 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # 02 · Silver — parse, clean, dedupe
-# MAGIC
-# MAGIC Bronze → Silver. We parse the raw JSON with an explicit schema, flatten the
-# MAGIC nested `actor`/`repo` structs, type-cast timestamps, drop malformed rows, and
-# MAGIC **MERGE** on `event_id` so re-runs are idempotent (exactly-once at the table).
 
-# COMMAND ----------
+# Bronze → Silver. We parse the raw JSON with an explicit schema, flatten the
+# nested `actor`/`repo` structs, type-cast timestamps, drop malformed rows, and
+# **MERGE** on `event_id` so re-runs are idempotent 
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("bronze_db", "gh_bronze")
 dbutils.widgets.text("silver_db", "gh_silver")
 dbutils.widgets.text("lookback_days", "1")
+dbutils.widgets.text("run_date", "")
 
 CATALOG = dbutils.widgets.get("catalog")
 BRONZE_DB = f"{CATALOG}.{dbutils.widgets.get('bronze_db')}"
 SILVER_DB = f"{CATALOG}.{dbutils.widgets.get('silver_db')}"
 LOOKBACK_DAYS = int(dbutils.widgets.get("lookback_days"))
+RUN_DATE = dbutils.widgets.get("run_date")
 
 # COMMAND ----------
 
@@ -30,7 +27,6 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_DB}")
 
 # COMMAND ----------
 
-# Explicit schema = no surprises, no expensive schema inference on every run.
 actor_schema = StructType([
     StructField("id", LongType()),
     StructField("login", StringType()),
@@ -57,12 +53,11 @@ event_schema = StructType([
     StructField("created_at", StringType()),
 ])
 
-# COMMAND ----------
 
-# Incremental read: only the recent partitions from Bronze.
+base_date = F.to_date(F.lit(RUN_DATE)) if RUN_DATE else F.current_date()
 bronze = (
     spark.table(f"{BRONZE_DB}.raw_events")
-    .where(F.col("ingestion_date") >= F.date_sub(F.current_date(), LOOKBACK_DAYS))
+    .where(F.col("ingestion_date") >= F.date_sub(base_date, LOOKBACK_DAYS))
     .where(F.col("raw_json").isNotNull())
 )
 
@@ -88,7 +83,7 @@ silver = (
     .where(F.col("event_id").isNotNull() & F.col("event_type").isNotNull())
     .withColumn("event_date", F.to_date("event_timestamp"))
     .withColumn("event_hour", F.hour("event_timestamp"))
-    .dropDuplicates(["event_id"])           # dedupe within this batch
+    .dropDuplicates(["event_id"])
 )
 
 # COMMAND ----------
@@ -99,7 +94,7 @@ if spark.catalog.tableExists(target):
     (
         DeltaTable.forName(spark, target).alias("t")
         .merge(silver.alias("s"), "t.event_id = s.event_id")
-        .whenNotMatchedInsertAll()           # insert only new events => exactly-once
+        .whenNotMatchedInsertAll()          
         .execute()
     )
 else:
@@ -109,9 +104,7 @@ else:
         .saveAsTable(target)
     )
 
-# COMMAND ----------
 
-# Keep the table healthy (compaction). OPTIMIZE works on Databricks Delta.
 spark.sql(f"OPTIMIZE {target}")
 
 display(spark.sql(f"SELECT event_type, COUNT(*) AS n FROM {target} GROUP BY event_type ORDER BY n DESC"))

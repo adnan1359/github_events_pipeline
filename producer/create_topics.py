@@ -45,9 +45,9 @@ def main() -> int:
     exit_code = 0
     for topic, future in futures.items():
         try:
-            future.result()  # blocks until creation completes
+            future.result() 
             print(f"[created] {topic}  ({NUM_PARTITIONS} partitions, RF={REPLICATION_FACTOR})")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc: 
             print(f"[error]   {topic}: {exc}")
             exit_code = 1
 

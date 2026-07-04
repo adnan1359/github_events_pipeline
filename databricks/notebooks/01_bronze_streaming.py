@@ -14,8 +14,7 @@
 
 # COMMAND ----------
 
-# Attach this notebook to **Serverless** compute (Connect → Serverless).
-dbutils.widgets.text("catalog", "workspace")          # verify yours in Catalog Explorer
+dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("bronze_db", "gh_bronze")
 dbutils.widgets.text("volume_path", "/Volumes/workspace/gh_bronze/pipeline")
 
@@ -28,37 +27,34 @@ KEYSTORE = f"{VOLUME}/certs/client.keystore.jks"
 CHECKPOINT = f"{VOLUME}/checkpoints/bronze_raw_events"
 TABLE = f"{CATALOG}.{BRONZE_DB}.raw_events"
 
-# COMMAND ----------
+
 
 from pyspark.sql.functions import col, current_timestamp, to_date
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{BRONZE_DB}")
 
-# Secrets hold only the passwords + bootstrap server (set up once — see README):
 KAFKA_BOOTSTRAP = dbutils.secrets.get("kafka-secrets", "bootstrap-servers")
 TRUSTSTORE_PW = dbutils.secrets.get("kafka-secrets", "ssl-truststore-password")
 KEYSTORE_PW = dbutils.secrets.get("kafka-secrets", "ssl-keystore-password")
 
-# COMMAND ----------
 
 kafka_df = (
     spark.readStream.format("kafka")
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
     .option("kafka.security.protocol", "SSL")
-    .option("kafka.ssl.truststore.location", TRUSTSTORE)   # /Volumes path, readable on serverless
+    .option("kafka.ssl.truststore.location", TRUSTSTORE)  
     .option("kafka.ssl.truststore.password", TRUSTSTORE_PW)
     .option("kafka.ssl.keystore.location", KEYSTORE)
     .option("kafka.ssl.keystore.password", KEYSTORE_PW)
     .option("subscribe", "github.events.raw")
-    .option("startingOffsets", "earliest")     # first run: read everything in the topic
-    .option("maxOffsetsPerTrigger", 50000)      # backpressure: cap per micro-batch
+    .option("startingOffsets", "earliest")  
+    .option("maxOffsetsPerTrigger", 50000) 
     .option("failOnDataLoss", "false")
     .load()
 )
 
 # COMMAND ----------
 
-# Bronze keeps the payload as a raw string + full Kafka metadata for lineage / replay.
 bronze_df = (
     kafka_df.select(
         col("key").cast("string").alias("event_id"),
@@ -77,14 +73,12 @@ bronze_df = (
 (
     bronze_df.writeStream.format("delta")
     .outputMode("append")
-    .option("checkpointLocation", CHECKPOINT)   # offsets stored here -> exactly-once on restart
+    .option("checkpointLocation", CHECKPOINT) 
     .option("mergeSchema", "true")
     .partitionBy("ingestion_date")
-    .trigger(availableNow=True)                  # drain Kafka, then stop (serverless-friendly)
+    .trigger(availableNow=True)               
     .toTable(TABLE)
     .awaitTermination()
 )
-
-# COMMAND ----------
 
 display(spark.sql(f"SELECT COUNT(*) AS rows, MAX(ingested_at) AS latest FROM {TABLE}"))

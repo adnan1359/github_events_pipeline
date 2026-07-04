@@ -6,8 +6,8 @@ services:
     container_name: gh_airflow
     restart: unless-stopped
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/db/airflow.db
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
@@ -20,7 +20,6 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
-      - airflow_db:/opt/airflow/db
       # Mount the producer + certs so the ingestion task can run inside Airflow.
       # config.py treats /opt/airflow as the project root, so certs resolve to /opt/airflow/certs.
       - ../producer:/opt/airflow/producer
@@ -29,14 +28,9 @@ services:
       - "8080:8080"
     command: >
       bash -c "
-      mkdir -p /opt/airflow/db &&
       pip install --no-cache-dir -r /opt/airflow/producer/requirements.txt &&
       airflow db migrate &&
-      airflow users create --username admin --password admin
-        --firstname Adnan --lastname Anam --role Admin --email admin@example.com || true &&
+      airflow users create --username admin --password admin --firstname Adnan --lastname Anam --role Admin --email admin@example.com || true &&
       (airflow scheduler &) &&
       exec airflow webserver
       "
-
-volumes:
-  airflow_db:

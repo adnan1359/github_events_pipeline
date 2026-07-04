@@ -1,5 +1,4 @@
--- Thin staging view over the Silver Delta table so Gold models depend on ref(),
--- not a hard-coded table name. Keeps lineage clean in dbt docs.
+
 SELECT
     event_id,
     event_type,
@@ -11,5 +10,6 @@ SELECT
     is_public,
     event_timestamp,
     event_date,
-    event_hour
+    event_hour,
+    ingested_at
 FROM {{ source('silver', 'events') }}

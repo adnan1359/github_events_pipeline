@@ -79,6 +79,17 @@ def fetch_gharchive_hour(date_str: str, hour: int):
     logger.info("Decompressed %d events", count)
 
 
+def _produce_one(producer: Producer, topic: str, key: bytes, payload: bytes, stats: Stats) -> None:
+    """Produce a single message, blocking briefly on BufferError to drain the queue."""
+    while True:
+        try:
+            producer.produce(topic, key=key, value=payload, callback=stats.callback)
+            return
+        except BufferError:
+            logger.debug("Producer queue full; draining...")
+            producer.poll(1)
+
+
 def produce_events(events, producer: Producer, stats: Stats, limit: int | None) -> int:
     """Produce events to Kafka. Returns the number of source events processed."""
     processed = 0
@@ -90,22 +101,27 @@ def produce_events(events, producer: Producer, stats: Stats, limit: int | None) 
         key = event_id.encode("utf-8")
         payload = json.dumps(event).encode("utf-8")
 
-        # 1) every event lands in the raw topic
-        producer.produce(TOPICS["raw"], key=key, value=payload, callback=stats.callback)
+        _produce_one(producer, TOPICS["raw"], key, payload, stats)
 
-        # 2) typed events also go to their dedicated topic
         topic = EVENT_ROUTING.get(event.get("type"))
         if topic:
-            producer.produce(topic, key=key, value=payload, callback=stats.callback)
+            _produce_one(producer, topic, key, payload, stats)
 
-        producer.poll(0)  # serve delivery callbacks, keep the buffer healthy
+        if processed % 100 == 0:
+            producer.poll(0)
+
         processed += 1
 
         if processed % 5000 == 0:
             logger.info("...queued %d events", processed)
 
-    logger.info("Flushing remaining messages...")
-    producer.flush(timeout=60)
+    logger.info("Flushing remaining messages (this may take a few minutes for large batches)...")
+    remaining = producer.flush(timeout=300)  
+    if remaining > 0:
+        raise RuntimeError(
+            f"flush() timed out with {remaining} messages still in queue or transit. "
+            "Increase flush timeout or check broker connectivity."
+        )
     return processed
 
 
@@ -145,6 +161,9 @@ def main() -> int:
         processed = produce_events(events, producer, stats, args.limit)
     except requests.HTTPError as exc:
         logger.error("GH Archive fetch failed (%s). That hour may not exist yet.", exc)
+        return 1
+    except RuntimeError as exc:
+        logger.error("Producer flush failed: %s", exc)
         return 1
 
     logger.info(

@@ -4,15 +4,38 @@ An end-to-end, production-style data pipeline that streams public GitHub activit
 through **Kafka** into a **Delta Lake medallion** on **Databricks**, orchestrated by
 **Airflow**, modeled with **dbt**, and visualized in **Power BI**.
 
-```
-GH Archive ─▶ Python Producer ─▶ Aiven Kafka ─▶ Spark Structured Streaming
-                                                        │
-                                          ┌─────────────┴─────────────┐
-                                          ▼             ▼             ▼
-                                       BRONZE   ─▶   SILVER   ─▶    GOLD        (Delta Lake)
-                                       raw JSON   parsed/clean   star schema
-                                          │                          │
-                                   Airflow orchestrates       Power BI / dbt
+```mermaid
+flowchart LR
+    %% Data Sources and Streaming
+    GH[GitHub Archive] -->|Python Producer| KAFKA(Aiven Kafka)
+    
+    %% Databricks Medallion Architecture
+    subgraph Delta Lake Medallion Architecture
+        KAFKA -->|Spark Structured Streaming| BRONZE[(Bronze Layer<br>Raw JSON)]
+        BRONZE -->|Cleaned & Deduplicated| SILVER[(Silver Layer<br>Parsed Events)]
+        SILVER -->|Aggregated Star Schema| GOLD[(Gold Layer<br>Business Ready)]
+    end
+    
+    %% Orchestration and BI
+    GOLD -->|Databricks SQL| BI[Power BI / dbt]
+    
+    AIRFLOW((Apache Airflow)) -.->|Orchestrates| KAFKA
+    AIRFLOW -.->|Triggers Jobs API| BRONZE
+    AIRFLOW -.->|Triggers Jobs API| SILVER
+    AIRFLOW -.->|Triggers Jobs API| GOLD
+    
+    %% Styling
+    classDef source fill:#f9f9f9,stroke:#333,stroke-width:2px
+    classDef kafka fill:#231f20,stroke:#fff,stroke-width:2px,color:#fff
+    classDef delta fill:#ff3621,stroke:#fff,stroke-width:2px,color:#fff
+    classDef airflow fill:#017cee,stroke:#fff,stroke-width:2px,color:#fff
+    
+    GH:::source
+    KAFKA:::kafka
+    BRONZE:::delta
+    SILVER:::delta
+    GOLD:::delta
+    AIRFLOW:::airflow
 ```
 
 | Concern        | Tool                                   |
@@ -136,24 +159,21 @@ PR activity trend, top developers leaderboard, event-type mix over time.
 
 ---
 
-## How to describe this on a resume
+## 🌟 Why this project stands out to Hiring Managers
 
-**GitHub Events Real-Time Data Pipeline** — *Kafka · Spark · Delta Lake · Databricks · Airflow · dbt*
+Most data engineering portfolios consist of simple batch scripts moving CSVs into Postgres. This project demonstrates the **exact modern data stack and architectural patterns** used by top-tier tech companies.
 
-- Built an end-to-end streaming pipeline ingesting **millions of public GitHub events**
-  from GH Archive into managed (Aiven) **Kafka**, consumed via **Spark Structured
-  Streaming** on **Databricks**.
-- Implemented a **medallion architecture** (Bronze/Silver/Gold) on **Delta Lake** with
-  schema enforcement, `MERGE`-based deduplication, and date partitioning for
-  **exactly-once, idempotent** processing.
-- Designed a **star schema** (fact + dimensions + aggregate marts) powering a **Power BI**
-  dashboard of repo trends, developer activity, and PR funnels.
-- Orchestrated the full flow with **Airflow** (Dockerized), triggering Databricks jobs
-  via the **Jobs REST API**, and modeled the Gold layer in **dbt** with data tests.
-- Applied production patterns: **checkpointing, backpressure, partition pruning,
-  incremental loads, secret management, and cost-optimized triggers.**
+### Technical Depth Demonstrated
+- **Real-Time Streaming vs. Batch**: Ingesting millions of events via **managed Kafka** and processing them with **Spark Structured Streaming** proves you understand stateful streaming, checkpoints, and backpressure.
+- **Modern Cloud Data Warehousing**: Implementing the **Medallion Architecture** (Bronze/Silver/Gold) on **Delta Lake** showcases your grasp of schema enforcement, ACID transactions in the data lake, and `MERGE`-based deduplication.
+- **Production-Grade Orchestration**: Running **Dockerized Apache Airflow** to orchestrate distributed cloud jobs via the **Databricks REST API** shows you know how to decouple control-plane from data-plane.
+- **Analytics Engineering Best Practices**: Incorporating **dbt** for the Gold layer highlights an understanding of data testing, modular SQL, and CI/CD ready analytics.
+- **Cost Optimization & Security**: Utilizing **Databricks Serverless compute**, `Trigger.availableNow` for cost control, and **Databricks Secret Scopes** for secure credential management proves you are ready for enterprise environments.
 
-**What makes it stand out:** it's not a toy CSV-to-Postgres script — it uses *managed
-cloud* messaging, *real streaming* (not batch pretending to stream), the *medallion*
-pattern every modern data team uses, and *orchestration + transformation + BI* layered
-on top. It demonstrates the exact stack used at top tech/data companies.
+### Resume Impact Bullet Points
+If you are adding this to your resume, here are high-impact bullet points you can use:
+
+> - *Architected an end-to-end streaming data pipeline ingesting millions of public GitHub events from GH Archive into Aiven Kafka, processed via Spark Structured Streaming on Databricks.*
+> - *Designed and implemented a Delta Lake Medallion Architecture (Bronze, Silver, Gold), utilizing `MERGE` operations for exactly-once idempotent processing and schema enforcement.*
+> - *Modeled a robust star schema powering a Power BI dashboard, highlighting repository trends and developer activity.*
+> - *Orchestrated the distributed pipeline using Dockerized Apache Airflow and the Databricks Jobs API, ensuring fault tolerance and automated retries.*

@@ -7,10 +7,6 @@ Hourly:
   3. silver_transform      — Databricks: Bronze -> Silver (parse/clean/dedupe)
   4. gold_aggregate        — Databricks: Silver -> Gold (star schema + aggregates)
 
-Databricks jobs are triggered via the Jobs 2.1 REST API (runs/submit), then polled
-to completion. On Free Edition we OMIT any cluster spec so the run lands on
-serverless compute automatically. No Databricks provider package needed — keeps
-the Airflow image slim.
 """
 from __future__ import annotations
 
@@ -39,23 +35,24 @@ default_args = {
 
 
 def _submit_run(notebook: str, params: dict | None = None) -> int:
-    """Submit a one-time notebook run on serverless compute. Returns run_id.
-
-    No `existing_cluster_id`/`new_cluster` is set — omitting the cluster spec makes
-    Databricks run the task on serverless (required on Free Edition).
+    """
+    Submit a one-time notebook run on serverless compute. Returns run_id.
     """
     resp = requests.post(
         f"{DATABRICKS_HOST}/api/2.1/jobs/runs/submit",
         headers=HEADERS,
         json={
             "run_name": f"airflow-{notebook}",
+            "queue": {"enabled": True},
             "tasks": [
                 {
                     "task_key": notebook.replace("/", "_"),
                     "notebook_task": {
                         "notebook_path": f"{NOTEBOOK_BASE}/{notebook}",
                         "base_parameters": {"catalog": CATALOG, **(params or {})},
+                        "source": "WORKSPACE",
                     },
+                    "libraries": [],
                 }
             ],
         },
@@ -67,6 +64,7 @@ def _submit_run(notebook: str, params: dict | None = None) -> int:
 
 def _wait(run_id: int, timeout_min: int = 60) -> None:
     """Poll a run until it terminates; raise if it didn't succeed."""
+    INTERNAL_ERROR_STATES = {"INTERNAL_ERROR", "SKIPPED"}
     deadline = time.monotonic() + timeout_min * 60
     while time.monotonic() < deadline:
         resp = requests.get(
@@ -77,13 +75,20 @@ def _wait(run_id: int, timeout_min: int = 60) -> None:
         )
         resp.raise_for_status()
         state = resp.json()["state"]
-        if state["life_cycle_state"] == "TERMINATED":
+        lc = state["life_cycle_state"]
+        print(f"Run {run_id} state: {lc} / {state.get('result_state', 'pending')}")
+        if lc == "TERMINATED":
             if state["result_state"] != "SUCCESS":
                 raise RuntimeError(
                     f"Databricks run {run_id} -> {state['result_state']}: "
                     f"{state.get('state_message')}"
                 )
             return
+        if lc in INTERNAL_ERROR_STATES:
+            raise RuntimeError(
+                f"Databricks run {run_id} hit terminal state {lc}: "
+                f"{state.get('state_message')}"
+            )
         time.sleep(30)
     raise TimeoutError(f"Run {run_id} did not finish within {timeout_min} min")
 
@@ -100,7 +105,7 @@ with DAG(
     dag_id="github_events_pipeline",
     default_args=default_args,
     description="GH Archive -> Kafka -> Databricks medallion -> Gold",
-    schedule="0 * * * *",            # hourly
+    schedule="0 * * * *", 
     start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_runs=1,
@@ -109,7 +114,11 @@ with DAG(
 
     produce = BashOperator(
         task_id="produce_kafka_events",
-        bash_command="cd /opt/airflow/producer && python kafka_producer.py",
+        bash_command=(
+            "cd /opt/airflow/producer && python kafka_producer.py "
+            "--date '{{ data_interval_start.strftime(\"%Y-%m-%d\") }}' "
+            "--hour {{ data_interval_start.hour }}"
+        ),
     )
 
     bronze = PythonOperator(
