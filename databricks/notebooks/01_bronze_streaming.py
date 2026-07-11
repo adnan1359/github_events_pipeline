@@ -28,7 +28,6 @@ CHECKPOINT = f"{VOLUME}/checkpoints/bronze_raw_events"
 TABLE = f"{CATALOG}.{BRONZE_DB}.raw_events"
 
 
-
 from pyspark.sql.functions import col, current_timestamp, to_date
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{BRONZE_DB}")
@@ -42,41 +41,38 @@ kafka_df = (
     spark.readStream.format("kafka")
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP)
     .option("kafka.security.protocol", "SSL")
-    .option("kafka.ssl.truststore.location", TRUSTSTORE)  
+    .option("kafka.ssl.truststore.location", TRUSTSTORE)
     .option("kafka.ssl.truststore.password", TRUSTSTORE_PW)
     .option("kafka.ssl.keystore.location", KEYSTORE)
     .option("kafka.ssl.keystore.password", KEYSTORE_PW)
     .option("subscribe", "github.events.raw")
-    .option("startingOffsets", "earliest")  
-    .option("maxOffsetsPerTrigger", 50000) 
+    .option("startingOffsets", "earliest")
+    .option("maxOffsetsPerTrigger", 50000)
     .option("failOnDataLoss", "false")
     .load()
 )
 
 # COMMAND ----------
 
-bronze_df = (
-    kafka_df.select(
-        col("key").cast("string").alias("event_id"),
-        col("value").cast("string").alias("raw_json"),
-        col("topic").alias("kafka_topic"),
-        col("partition").alias("kafka_partition"),
-        col("offset").alias("kafka_offset"),
-        col("timestamp").alias("kafka_timestamp"),
-        current_timestamp().alias("ingested_at"),
-    )
-    .withColumn("ingestion_date", to_date("ingested_at"))
-)
+bronze_df = kafka_df.select(
+    col("key").cast("string").alias("event_id"),
+    col("value").cast("string").alias("raw_json"),
+    col("topic").alias("kafka_topic"),
+    col("partition").alias("kafka_partition"),
+    col("offset").alias("kafka_offset"),
+    col("timestamp").alias("kafka_timestamp"),
+    current_timestamp().alias("ingested_at"),
+).withColumn("ingestion_date", to_date("ingested_at"))
 
 # COMMAND ----------
 
 (
     bronze_df.writeStream.format("delta")
     .outputMode("append")
-    .option("checkpointLocation", CHECKPOINT) 
+    .option("checkpointLocation", CHECKPOINT)
     .option("mergeSchema", "true")
     .partitionBy("ingestion_date")
-    .trigger(availableNow=True)               
+    .trigger(availableNow=True)
     .toTable(TABLE)
     .awaitTermination()
 )

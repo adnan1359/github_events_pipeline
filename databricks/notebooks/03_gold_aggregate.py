@@ -1,4 +1,3 @@
-
 # Gold — business-ready star schema + aggregates
 
 # Silver → Gold. Builds dimension tables (`dim_repos`, `dim_users`), a fact table
@@ -21,13 +20,13 @@ from pyspark.sql import functions as F
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {GOLD_DB}")
 silver = spark.table(f"{SILVER_DB}.events")
 
+
 def write_gold(df, name, partition_by=None):
     w = df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     if partition_by:
         w = w.partitionBy(partition_by)
     w.saveAsTable(f"{GOLD_DB}.{name}")
     print(f"wrote {GOLD_DB}.{name}")
-
 
 
 dim_repos = (
@@ -40,7 +39,6 @@ dim_repos = (
     )
 )
 write_gold(dim_repos, "dim_repos")
-
 
 
 dim_users = (
@@ -56,23 +54,23 @@ write_gold(dim_users, "dim_users")
 
 
 fact_events = silver.select(
-    "event_id", "event_type", "actor_id", "repo_id",
-    "is_public", "event_timestamp", "event_date", "event_hour",
+    "event_id",
+    "event_type",
+    "actor_id",
+    "repo_id",
+    "is_public",
+    "event_timestamp",
+    "event_date",
+    "event_hour",
 )
 write_gold(fact_events, "fact_events", partition_by="event_date")
 
 
-
-agg_daily = (
-    silver.groupBy("event_date", "repo_id", "repo_name", "event_type")
-    .agg(
-        F.count("event_id").alias("event_count"),
-        F.countDistinct("actor_id").alias("unique_actors"),
-    )
+agg_daily = silver.groupBy("event_date", "repo_id", "repo_name", "event_type").agg(
+    F.count("event_id").alias("event_count"),
+    F.countDistinct("actor_id").alias("unique_actors"),
 )
 write_gold(agg_daily, "agg_daily_activity", partition_by="event_date")
-
-
 
 
 top_repos = (

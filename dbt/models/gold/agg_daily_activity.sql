@@ -5,22 +5,30 @@
 ) }}
 
 SELECT
-    event_date,
-    repo_id,
-    repo_name,
-    event_type,
-    COUNT(event_id)             AS event_count,
-    COUNT(DISTINCT actor_id)    AS unique_actors,
-    MAX(ingested_at)            AS ingested_at
-FROM {{ ref('silver_events') }}
+    se.event_date,
+    se.repo_id,
+    se.repo_name,
+    se.event_type,
+    COUNT(se.event_id) AS event_count,
+    COUNT(DISTINCT se.actor_id) AS unique_actors,
+    MAX(se.ingested_at) AS ingested_at
+FROM {{ ref('silver_events') }} AS se
 
 {% if is_incremental() %}
-  -- Re-aggregate only the dates affected by newly ingested data
-  WHERE event_date IN (
-      SELECT DISTINCT event_date
-      FROM {{ ref('silver_events') }}
-      WHERE ingested_at > (SELECT COALESCE(MAX(ingested_at), TIMESTAMP'1970-01-01 00:00:00') FROM {{ this }})
-  )
+    -- Re-aggregate only the dates affected by newly ingested data
+    WHERE se.event_date IN (
+        SELECT DISTINCT sub.event_date
+        FROM {{ ref('silver_events') }} AS sub
+        WHERE
+            sub.ingested_at
+            > (
+                SELECT
+                    COALESCE(
+                        MAX(t.ingested_at), TIMESTAMP '1970-01-01 00:00:00'
+                    )
+                FROM {{ this }} AS t
+            )
+    )
 {% endif %}
 
-GROUP BY event_date, repo_id, repo_name, event_type
+GROUP BY se.event_date, se.repo_id, se.repo_name, se.event_type

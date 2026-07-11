@@ -17,6 +17,7 @@ python kafka_producer.py --date 2024-01-15 --hour 12
 # Only send the first 500 events (fast smoke test):
 python kafka_producer.py --date 2024-01-15 --hour 12 --limit 500
 """
+
 import argparse
 import gzip
 import json
@@ -25,9 +26,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 import requests
-from confluent_kafka import Producer
-
 from config import GHARCHIVE_BASE_URL, KAFKA_CONFIG, TOPICS, validate_certs
+from confluent_kafka import Producer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -116,7 +116,7 @@ def produce_events(events, producer: Producer, stats: Stats, limit: int | None) 
             logger.info("...queued %d events", processed)
 
     logger.info("Flushing remaining messages (this may take a few minutes for large batches)...")
-    remaining = producer.flush(timeout=300)  
+    remaining = producer.flush(timeout=300)
     if remaining > 0:
         raise RuntimeError(
             f"flush() timed out with {remaining} messages still in queue or transit. "
@@ -168,7 +168,9 @@ def main() -> int:
 
     logger.info(
         "Done. source events=%d | delivered=%d | failed=%d",
-        processed, stats.delivered, stats.failed,
+        processed,
+        stats.delivered,
+        stats.failed,
     )
     return 0 if stats.failed == 0 else 1
 

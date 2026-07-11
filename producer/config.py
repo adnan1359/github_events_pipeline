@@ -4,6 +4,7 @@ Central configuration for the GitHub Events producer.
 Reads from a .env file at the project root if present, otherwise falls back to
 sensible defaults that point at the Aiven service and the local certs/ folder.
 """
+
 import os
 from pathlib import Path
 
@@ -39,13 +40,12 @@ KAFKA_CONFIG = {
     "ssl.ca.location": SSL_CA_LOCATION,
     "ssl.certificate.location": SSL_CERT_LOCATION,
     "ssl.key.location": SSL_KEY_LOCATION,
-
-    "acks": "all",                 
-    "enable.idempotence": True,    
+    "acks": "all",
+    "enable.idempotence": True,
     "retries": 5,
-    "linger.ms": 50,              
+    "linger.ms": 50,
     "compression.type": "snappy",
-    "queue.buffering.max.messages": 200000, 
+    "queue.buffering.max.messages": 200000,
     "queue.buffering.max.kbytes": 524288,
 }
 
@@ -61,7 +61,7 @@ TOPICS = {
 NUM_PARTITIONS = 2
 REPLICATION_FACTOR = 2
 
-# ── Data source 
+# ── Data source
 GHARCHIVE_BASE_URL = "https://data.gharchive.org"
 
 

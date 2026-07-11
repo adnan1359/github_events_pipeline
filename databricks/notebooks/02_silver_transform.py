@@ -1,7 +1,6 @@
-
 # Bronze → Silver. We parse the raw JSON with an explicit schema, flatten the
 # nested `actor`/`repo` structs, type-cast timestamps, drop malformed rows, and
-# **MERGE** on `event_id` so re-runs are idempotent 
+# **MERGE** on `event_id` so re-runs are idempotent
 
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("bronze_db", "gh_bronze")
@@ -17,41 +16,53 @@ RUN_DATE = dbutils.widgets.get("run_date")
 
 # COMMAND ----------
 
+from delta.tables import DeltaTable
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
-    BooleanType, LongType, StringType, StructField, StructType,
+    BooleanType,
+    LongType,
+    StringType,
+    StructField,
+    StructType,
 )
-from delta.tables import DeltaTable
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_DB}")
 
 # COMMAND ----------
 
-actor_schema = StructType([
-    StructField("id", LongType()),
-    StructField("login", StringType()),
-    StructField("display_login", StringType()),
-    StructField("url", StringType()),
-    StructField("avatar_url", StringType()),
-])
-repo_schema = StructType([
-    StructField("id", LongType()),
-    StructField("name", StringType()),
-    StructField("url", StringType()),
-])
-org_schema = StructType([
-    StructField("id", LongType()),
-    StructField("login", StringType()),
-])
-event_schema = StructType([
-    StructField("id", StringType()),
-    StructField("type", StringType()),
-    StructField("actor", actor_schema),
-    StructField("repo", repo_schema),
-    StructField("org", org_schema),
-    StructField("public", BooleanType()),
-    StructField("created_at", StringType()),
-])
+actor_schema = StructType(
+    [
+        StructField("id", LongType()),
+        StructField("login", StringType()),
+        StructField("display_login", StringType()),
+        StructField("url", StringType()),
+        StructField("avatar_url", StringType()),
+    ]
+)
+repo_schema = StructType(
+    [
+        StructField("id", LongType()),
+        StructField("name", StringType()),
+        StructField("url", StringType()),
+    ]
+)
+org_schema = StructType(
+    [
+        StructField("id", LongType()),
+        StructField("login", StringType()),
+    ]
+)
+event_schema = StructType(
+    [
+        StructField("id", StringType()),
+        StructField("type", StringType()),
+        StructField("actor", actor_schema),
+        StructField("repo", repo_schema),
+        StructField("org", org_schema),
+        StructField("public", BooleanType()),
+        StructField("created_at", StringType()),
+    ]
+)
 
 
 base_date = F.to_date(F.lit(RUN_DATE)) if RUN_DATE else F.current_date()
@@ -92,19 +103,18 @@ target = f"{SILVER_DB}.events"
 
 if spark.catalog.tableExists(target):
     (
-        DeltaTable.forName(spark, target).alias("t")
+        DeltaTable.forName(spark, target)
+        .alias("t")
         .merge(silver.alias("s"), "t.event_id = s.event_id")
-        .whenNotMatchedInsertAll()          
+        .whenNotMatchedInsertAll()
         .execute()
     )
 else:
-    (
-        silver.write.format("delta")
-        .partitionBy("event_date", "event_type")
-        .saveAsTable(target)
-    )
+    (silver.write.format("delta").partitionBy("event_date", "event_type").saveAsTable(target))
 
 
 spark.sql(f"OPTIMIZE {target}")
 
-display(spark.sql(f"SELECT event_type, COUNT(*) AS n FROM {target} GROUP BY event_type ORDER BY n DESC"))
+display(
+    spark.sql(f"SELECT event_type, COUNT(*) AS n FROM {target} GROUP BY event_type ORDER BY n DESC")
+)

@@ -6,18 +6,23 @@
 ) }}
 
 SELECT
-    event_id,
-    event_type,
-    actor_id,
-    repo_id,
-    is_public,
-    event_timestamp,
-    event_date,
-    event_hour,
-    ingested_at
-FROM {{ ref('silver_events') }}
+    se.event_id,
+    se.event_type,
+    se.actor_id,
+    se.repo_id,
+    se.is_public,
+    se.event_timestamp,
+    se.event_date,
+    se.event_hour,
+    se.ingested_at
+FROM {{ ref('silver_events') }} AS se
 
 {% if is_incremental() %}
-  -- only pull rows newer than what we already loaded
-  WHERE ingested_at > (SELECT COALESCE(MAX(ingested_at), TIMESTAMP'1970-01-01 00:00:00') FROM {{ this }})
+    -- only pull rows newer than what we already loaded
+    WHERE
+        se.ingested_at
+        > (
+            SELECT COALESCE(MAX(t.ingested_at), TIMESTAMP '1970-01-01 00:00:00')
+            FROM {{ this }} AS t
+        )
 {% endif %}

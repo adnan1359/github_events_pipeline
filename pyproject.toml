@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+]
+# Define Databricks/PySpark global variables to prevent F821 (undefined name) errors
+builtins = ["spark", "dbutils", "display", "getArgument"]
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), Pycodestyle (E, W), and Isort (I)
+select = ["E", "F", "W", "I"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# Databricks notebooks use cell-based execution where imports are often not at the top (E402)
+# and contain long SQL query strings or display commands (E501)
+"databricks/notebooks/*.py" = ["E402", "E501"]
+"airflow/dags/*.py" = ["E501"]
+

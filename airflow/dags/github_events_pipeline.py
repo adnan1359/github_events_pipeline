@@ -8,6 +8,7 @@ Hourly:
   4. gold_aggregate        — Databricks: Silver -> Gold (star schema + aggregates)
 
 """
+
 from __future__ import annotations
 
 import os
@@ -15,9 +16,10 @@ import time
 from datetime import datetime, timedelta
 
 import requests
-from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
+
+from airflow import DAG
 
 DATABRICKS_HOST = os.environ["DATABRICKS_HOST"].rstrip("/")
 DATABRICKS_TOKEN = os.environ["DATABRICKS_TOKEN"]
@@ -86,8 +88,7 @@ def _wait(run_id: int, timeout_min: int = 60) -> None:
             return
         if lc in INTERNAL_ERROR_STATES:
             raise RuntimeError(
-                f"Databricks run {run_id} hit terminal state {lc}: "
-                f"{state.get('state_message')}"
+                f"Databricks run {run_id} hit terminal state {lc}: {state.get('state_message')}"
             )
         time.sleep(30)
     raise TimeoutError(f"Run {run_id} did not finish within {timeout_min} min")
@@ -105,13 +106,12 @@ with DAG(
     dag_id="github_events_pipeline",
     default_args=default_args,
     description="GH Archive -> Kafka -> Databricks medallion -> Gold",
-    schedule="0 * * * *", 
+    schedule="0 * * * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_runs=1,
     tags=["github", "kafka", "databricks", "delta"],
 ) as dag:
-
     produce = BashOperator(
         task_id="produce_kafka_events",
         bash_command=(

@@ -9,11 +9,11 @@ Verifies that:
 Usage:
     python test_connection.py
 """
+
 import sys
 
-from confluent_kafka.admin import AdminClient
-
 from config import KAFKA_BOOTSTRAP_SERVERS, KAFKA_CONFIG, validate_certs
+from confluent_kafka.admin import AdminClient
 
 
 def main() -> int:
@@ -37,7 +37,7 @@ def main() -> int:
     admin = AdminClient(KAFKA_CONFIG)
     try:
         metadata = admin.list_topics(timeout=15)
-    except Exception as exc:  
+    except Exception as exc:
         print(f"\n[FAILED] Could not connect: {exc}")
         return 1
 

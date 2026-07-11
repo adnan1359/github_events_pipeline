@@ -1,0 +1,26 @@
+name: Deploy Notebooks to Databricks
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'databricks/notebooks/**'
+
+jobs:
+  deploy:
+    name: Deploy to Workspace
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Deploy Notebooks
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks workspace import-dir ./databricks/notebooks /Shared/github_pipeline --overwrite

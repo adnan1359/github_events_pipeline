@@ -7,11 +7,11 @@ automates it. Partitions/replication are capped at 2 to match the free tier.
 Usage:
     python create_topics.py
 """
+
 import sys
 
-from confluent_kafka.admin import AdminClient, NewTopic
-
 from config import KAFKA_CONFIG, NUM_PARTITIONS, REPLICATION_FACTOR, TOPICS
+from confluent_kafka.admin import AdminClient, NewTopic
 
 
 def main() -> int:
@@ -45,9 +45,9 @@ def main() -> int:
     exit_code = 0
     for topic, future in futures.items():
         try:
-            future.result() 
+            future.result()
             print(f"[created] {topic}  ({NUM_PARTITIONS} partitions, RF={REPLICATION_FACTOR})")
-        except Exception as exc: 
+        except Exception as exc:
             print(f"[error]   {topic}: {exc}")
             exit_code = 1
 
