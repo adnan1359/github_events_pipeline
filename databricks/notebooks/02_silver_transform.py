@@ -112,9 +112,47 @@ if spark.catalog.tableExists(target):
 else:
     (silver.write.format("delta").partitionBy("event_date", "event_type").saveAsTable(target))
 
+# COMMAND ----------
+
+# Apply Delta Table Constraints (checks value integrity)
+try:
+    spark.sql(
+        f"ALTER TABLE {target} ADD CONSTRAINT check_event_timestamp CHECK (event_timestamp > '2020-01-01T00:00:00Z')"
+    )
+except Exception as e:
+    if "already exists" not in str(e):
+        print(f"Warning: could not add timestamp constraint: {e}")
+
+# COMMAND ----------
 
 spark.sql(f"OPTIMIZE {target}")
 
 display(
     spark.sql(f"SELECT event_type, COUNT(*) AS n FROM {target} GROUP BY event_type ORDER BY n DESC")
 )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Data Quality Validation Checks
+
+# COMMAND ----------
+
+# 1. Verify duplicates count is 0
+dupes_df = spark.table(target).groupBy("event_id").count().where("count > 1")
+dupes_count = dupes_df.count()
+if dupes_count > 0:
+    raise AssertionError(
+        f"DATA QUALITY FAILURE: Found {dupes_count} duplicate event_ids in Silver table {target}!"
+    )
+
+# 2. Verify critical columns have 0 null values
+null_checks = ["actor_id", "repo_id", "event_timestamp"]
+for col_name in null_checks:
+    null_count = spark.table(target).where(F.col(col_name).isNull()).count()
+    if null_count > 0:
+        raise AssertionError(
+            f"DATA QUALITY FAILURE: Found {null_count} null values in critical column '{col_name}' of Silver table {target}!"
+        )
+
+print("✅ Silver data quality validation checks passed successfully!")

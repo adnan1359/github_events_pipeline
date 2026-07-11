@@ -78,3 +78,38 @@ bronze_df = kafka_df.select(
 )
 
 display(spark.sql(f"SELECT COUNT(*) AS rows, MAX(ingested_at) AS latest FROM {TABLE}"))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Data Quality Validation Checks
+
+# COMMAND ----------
+
+# 1. Verify schema drift (essential columns are present)
+expected_cols = {
+    "event_id",
+    "raw_json",
+    "kafka_topic",
+    "kafka_partition",
+    "kafka_offset",
+    "kafka_timestamp",
+    "ingested_at",
+    "ingestion_date",
+}
+actual_cols = set(spark.table(TABLE).columns)
+missing_cols = expected_cols - actual_cols
+
+if missing_cols:
+    raise AssertionError(
+        f"DATA QUALITY FAILURE: Schema drift detected! Missing columns in Bronze table {TABLE}: {missing_cols}"
+    )
+
+# 2. Check for null keys in the raw events
+null_keys_count = spark.table(TABLE).where(col("event_id").isNull()).count()
+if null_keys_count > 0:
+    raise AssertionError(
+        f"DATA QUALITY FAILURE: Found {null_keys_count} null event_ids in Bronze table {TABLE}!"
+    )
+
+print("✅ Bronze data quality validation checks passed successfully!")

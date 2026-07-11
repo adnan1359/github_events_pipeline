@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: dim_repos
+    description: "Dimension table containing deduplicated GitHub repositories."
+    columns:
+      - name: repo_id
+        tests:
+          - unique
+          - not_null
+      - name: repo_name
+        tests:
+          - not_null
+
+  - name: dim_users
+    description: "Dimension table containing deduplicated actors/users."
+    columns:
+      - name: actor_id
+        tests:
+          - unique
+          - not_null
+      - name: actor_login
+        tests:
+          - not_null
+
+  - name: fact_events
+    description: "Fact table containing GitHub events."
+    columns:
+      - name: event_id
+        tests:
+          - unique
+          - not_null
+      - name: event_type
+        tests:
+          - not_null
+      - name: actor_id
+        tests:
+          - not_null
+      - name: repo_id
+        tests:
+          - not_null
+
+  - name: agg_daily_activity
+    description: "Pre-aggregated daily activity summary per repository and event type."
+    columns:
+      - name: event_date
+        tests:
+          - not_null
+      - name: repo_id
+        tests:
+          - not_null
+      - name: event_type
+        tests:
+          - not_null
+      - name: event_count
+        tests:
+          - not_null
