@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'databricks/notebooks/**'
+  workflow_dispatch:  # allows manual trigger from GitHub Actions UI
 
 jobs:
   deploy:
