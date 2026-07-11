@@ -23,10 +23,13 @@ jobs:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
-          # Ensure the destination folder exists in the workspace
+          # Wipe the old folder (ignores error if it doesn't exist yet)
+          databricks workspace delete /Shared/github_pipeline --recursive || true
+
+          # Recreate the folder
           databricks workspace mkdirs /Shared/github_pipeline
 
-          # Upload all notebooks (--overwrite replaces existing files)
+          # Upload all notebooks fresh
           databricks workspace import-dir ./databricks/notebooks /Shared/github_pipeline --overwrite
 
           echo "✅ Notebooks deployed successfully to /Shared/github_pipeline"
