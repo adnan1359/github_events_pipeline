@@ -26,7 +26,7 @@ flowchart TD
     end
 
     %% Compute and Storage
-    subgraph Databricks Lakehouse (Serverless Compute)
+    subgraph "Databricks Lakehouse (Serverless Compute)"
         Topics -->|Spark Structured Streaming| Bronze[(Bronze Layer<br>raw_events Delta Table)]
         
         Bronze -->|Post-Ingestion Audit| DQ1{Audit: Schema Drift &<br>Null Event Keys}
@@ -40,7 +40,7 @@ flowchart TD
     end
 
     %% Analytics & Orchestration
-    subgraph Serving & Orchestration
+    subgraph "Serving & Orchestration"
         Gold -->|Databricks SQL Connector| BI[Power BI Dashboards]
         Airflow((Apache Airflow<br>Dockerized)) -->|Trigger & Poll REST API| Databricks
         Airflow -->|Execution / Failures| Alerts[Slack / Email Notifications]
@@ -183,17 +183,6 @@ Download your connection credentials from Aiven console and place them in the `/
   - **Bronze**: Spark Structured Streaming manages Kafka offsets inside transaction checkpoints.
   - **Silver**: A `MERGE INTO` operation deduplicates incoming records on `event_id` during upserts.
   - **Gold**: Extended `dbt` tests validate uniqueness Constraints on surrogate keys.
-
----
-
-## 📈 Dashboard & Monitoring Artifacts
-
-*Placeholder for dashboard screenshots and operational views:*
-
-| Power BI Analytics Dashboard | Databricks Workflows / DAG Runs | Airflow Execution Logs |
-| :---: | :---: | :---: |
-| ![Power BI Dashboard Placeholder](https://via.placeholder.com/400x250.png?text=Power+BI+GitHub+Activity+Dashboard) | ![Databricks Job Run Placeholder](https://via.placeholder.com/400x250.png?text=Databricks+Job+Run+History) | ![Airflow Logs Placeholder](https://via.placeholder.com/400x250.png?text=Airflow+DAG+Overview) |
-
 ---
 
 ## 📖 Runbook: Operating the Pipeline
