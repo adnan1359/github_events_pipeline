@@ -23,4 +23,10 @@ jobs:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          # Ensure the destination folder exists in the workspace
+          databricks workspace mkdirs /Shared/github_pipeline
+
+          # Upload all notebooks (--overwrite replaces existing files)
           databricks workspace import-dir ./databricks/notebooks /Shared/github_pipeline --overwrite
+
+          echo "✅ Notebooks deployed successfully to /Shared/github_pipeline"
